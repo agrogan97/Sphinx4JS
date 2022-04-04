@@ -7,8 +7,14 @@ This only uses packages that come pre-packaged with Python3, so there is no requ
 
 ## Usage ##
 
-Run::
+Run
 
-    python parseJS.py <JSSourceDir>
+    python parseJS.py <JSSourceDir> -v
 
-    
+Eg:
+
+    python parseJS.py src/ -v
+
+Replace <JSSourceDir> with the source directory of your javascript. The Python produced by this process will be saved locally in a directory called 'parsedPython/'. Use this as your target directory for Sphinx make.
+
+-v is a verbose flag. Delete it to prevent the ASCII header from printing (boo boring!)
