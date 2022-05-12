@@ -71,7 +71,7 @@ def createParsedPythonDir():
     else:
         os.mkdir("parsedPython")
 
-def generateDummyPython2(jsTxt):
+def generateDummyPython(jsTxt):
     """Take in javascript from a single file and convert the JS docstrings into Python docstrings
 
     :param jsTxt: The javascript, as a line-by-line list
@@ -115,98 +115,6 @@ def generateDummyPython2(jsTxt):
             pythonDocstrings.append("\t" + line.lstrip().rstrip())
 
     print("Parsed %d functions from file" % (numFunctions))
-
-    return pythonDocstrings
-
-def generateDummyPython(jsTxt):
-    """Take in javascript from a single file and convert the JS docstrings into Python docstrings
-
-    :param jsTxt: The javascript, as a line-by-line list
-    :type jsTxt: array-like of strings
-    :return: list of line-by-line Python docstrings, including function names and params
-    :rtype: array-like of strings
-    """
-
-    numFunctions = 0
-
-    # All of our docstrings
-    pythonDocstrings = []
-
-    # Track which line number we're on
-    lineCount = 0
-
-    for line in jsTxt:
-        if 'function' in line:
-            currentFunctionLine = lineCount
-            # Keep track of how many functions we've got
-            numFunctions = numFunctions + 1
-            # And get the main part, including the function name and the input params
-            # Split by ()
-            funcMain = line.split("(")
-            # Grab the second part, which will be just the function name text
-            funcName = funcMain[0].split(" ")[1]
-            print(line)
-            # Take the second item in the list, and split by closing brackets ')', then split by spaces
-            if len(line) != 0:
-                print("full line")
-                funcParams = funcMain[1].split(")")[0].split(",")
-                # funcParams = re.split("(|,|, |)", funcMain[1])
-                # And formulate the python function opener:
-                pythonEquivalent = ("def %s(" % (funcName))
-
-                # Need index of last item so we know when to close the brackets
-                indexOfLast = funcParams.index(funcParams[-1])
-                # Iterate over each of the parameters we got from the substring list
-                for entry in funcParams:
-                    if funcParams.index(entry) == indexOfLast:
-                        pythonEquivalent = pythonEquivalent + entry + "):"
-                    else:
-                        pythonEquivalent = pythonEquivalent + entry + ", "
-
-                # This leaves us with a string of the function parameters
-                newPythonDocstring = pythonEquivalent
-
-                # Will be true when the line we're cuurently iterating over is a doctstring line (i.e we haven't seen '*/' yet)
-                trackingFunc = True
-            else:
-                # Add a newline?
-                pass
-        
-        # Get the next line after our function
-        if trackingFunc:
-            # Get the start and end indices:
-            if '/*' in line:
-                # I think this won't work because of how index works - it'll just find the first example from the list, not the current example
-                docstringStartIndex = jsTxt[currentFunctionLine:].index(line)
-            if '*/' in line:
-                docstringEndIndex = jsTxt[currentFunctionLine:].index(line)
-                # Got the ending, so we can stop tracking our function:
-                trackingFunc = False
-
-                # and then commentText is all the lines between these 2
-                commentText = jsTxt[currentFunctionLine:][docstringStartIndex+1:docstringEndIndex]
-
-                # This includes all the leading whitespace for tabs, so we can keep it
-
-                pythonCommentMarker = ' """ '
-
-                newPythonDocstring = newPythonDocstring + "\n" + pythonCommentMarker
-
-                for item in commentText:
-                    # TODO: Check this, might encounter problems removing the newline character this way?
-                    newPythonDocstring = newPythonDocstring + item
-
-                # Append closing structure
-                newPythonDocstring = newPythonDocstring + pythonCommentMarker
-
-                # print(newPythonDocstring)
-
-                # And finally add it to the cumulative list for all functions in the JS file
-                pythonDocstrings.append(newPythonDocstring)
-
-        lineCount = lineCount + 1
-
-    print("Converted %d JS functions into python..." % (numFunctions))
 
     return pythonDocstrings
 
@@ -275,7 +183,7 @@ def main():
         createParsedPythonDir()
 
         # Parse the jsTxt and convert to dummy python
-        allPython = generateDummyPython2(jsTxt)
+        allPython = generateDummyPython(jsTxt)
 
         # And save the new Python dosctrings to disk - using the original filename but replacing it with .py
         saveTxtAsPython(allPython, jsf[:-3])
