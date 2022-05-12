@@ -21,6 +21,7 @@ Flags:
 
 import sys
 import os
+import re
 
 def asciiArtIntro(verbose=True):
 
@@ -70,6 +71,53 @@ def createParsedPythonDir():
     else:
         os.mkdir("parsedPython")
 
+def generateDummyPython2(jsTxt):
+    """Take in javascript from a single file and convert the JS docstrings into Python docstrings
+
+    :param jsTxt: The javascript, as a line-by-line list
+    :type jsTxt: array-like of strings
+    :return: list of line-by-line Python docstrings, including function names and params
+    :rtype: array-like of strings
+    """
+
+    numFunctions = 0
+
+    # All of our docstrings
+    pythonDocstrings = []
+
+    withinDs = False
+
+    for line in jsTxt:
+        # Check if it is of the structure: function ...() {
+        if line.startswith('function') and line.endswith('\n'):
+            # This is a function declaration line, so take what we need using regex:
+            # function name
+            fname = re.findall('[\b\(\)(, \s)]([a-zA-Z0-9]+)', line)[0]
+            fargs = re.findall('[\b\(\)(, \s)]([a-zA-Z0-9]+)', line)[1:]
+            pythonDocstring = ('def %s(' % fname)
+            for x in fargs:
+                pythonDocstring += x + ','
+            pythonDocstring += "):"
+            pythonDocstrings.append(pythonDocstring.lstrip().rstrip())
+            numFunctions += 1
+        # Loop over the docstring
+        if (line.lstrip()).startswith('/*') and not withinDs:
+            dsStart = re.search('(?<=[\/\*])[\w|\s]+', line).group()
+            pythonDocstrings.append("\t" + '"""' + dsStart.lstrip().rstrip())
+            withinDs = True
+        elif line.endswith('*/\n'):
+            dsEnd = line[:-3]
+            pythonDocstrings.append("\t" + dsEnd.lstrip().rstrip() + '"""\n')
+            # pythonDocstrings.append('\n')
+            withinDs = False
+        elif withinDs:
+            # Remove leading whitespace and ending newline
+            pythonDocstrings.append("\t" + line.lstrip().rstrip())
+
+    print("Parsed %d functions from file" % (numFunctions))
+
+    return pythonDocstrings
+
 def generateDummyPython(jsTxt):
     """Take in javascript from a single file and convert the JS docstrings into Python docstrings
 
@@ -97,26 +145,32 @@ def generateDummyPython(jsTxt):
             funcMain = line.split("(")
             # Grab the second part, which will be just the function name text
             funcName = funcMain[0].split(" ")[1]
+            print(line)
             # Take the second item in the list, and split by closing brackets ')', then split by spaces
-            funcParams = funcMain[1].split(")")[0].split(",")
+            if len(line) != 0:
+                print("full line")
+                funcParams = funcMain[1].split(")")[0].split(",")
+                # funcParams = re.split("(|,|, |)", funcMain[1])
+                # And formulate the python function opener:
+                pythonEquivalent = ("def %s(" % (funcName))
 
-            # And formulate the python function opener:
-            pythonEquivalent = ("def %s(" % (funcName))
+                # Need index of last item so we know when to close the brackets
+                indexOfLast = funcParams.index(funcParams[-1])
+                # Iterate over each of the parameters we got from the substring list
+                for entry in funcParams:
+                    if funcParams.index(entry) == indexOfLast:
+                        pythonEquivalent = pythonEquivalent + entry + "):"
+                    else:
+                        pythonEquivalent = pythonEquivalent + entry + ", "
 
-            # Need index of last item so we know when to close the brackets
-            indexOfLast = funcParams.index(funcParams[-1])
-            # Iterate over each of the parameters we got from the substring list
-            for entry in funcParams:
-                if funcParams.index(entry) == indexOfLast:
-                    pythonEquivalent = pythonEquivalent + entry + "):"
-                else:
-                    pythonEquivalent = pythonEquivalent + entry + ", "
+                # This leaves us with a string of the function parameters
+                newPythonDocstring = pythonEquivalent
 
-            # This leaves us with a string of the function parameters
-            newPythonDocstring = pythonEquivalent
-
-            # Will be true when the line we're cuurently iterating over is a doctstring line (i.e we haven't seen '*/' yet)
-            trackingFunc = True
+                # Will be true when the line we're cuurently iterating over is a doctstring line (i.e we haven't seen '*/' yet)
+                trackingFunc = True
+            else:
+                # Add a newline?
+                pass
         
         # Get the next line after our function
         if trackingFunc:
@@ -215,17 +269,18 @@ def main():
         # Load in each file line by line as txt
         with open(sourceDir + jsf) as f:
             jsTxt = f.readlines()
+            print("Opened %s" % (jsf))
 
         # With our js as txt, create a dedicated python dir (or pass if existing)
         createParsedPythonDir()
 
-        # Parse the jsTxt and convert to dummy python - TODO: now need to make a change to handle multiple functions in a file:
-        allPython = generateDummyPython(jsTxt)
+        # Parse the jsTxt and convert to dummy python
+        allPython = generateDummyPython2(jsTxt)
 
         # And save the new Python dosctrings to disk - using the original filename but replacing it with .py
         saveTxtAsPython(allPython, jsf[:-3])
 
-    print("\nDone! Now run <>/make html to build your Sphinx files.")
+    print("\nDone! Now run make html to build your Sphinx files.")
 
     return None
 
