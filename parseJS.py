@@ -128,7 +128,7 @@ def saveTxtAsPython(allPython, filename):
     :return: None
     :rtype: None
     """
-    filepath = 'parsedPython/' + filename + '.py'
+    filepath = 'parsedPython/_' + filename + '.py'
     with open(filepath, 'w') as f:
         for item in allPython:
             f.write("%s\n" % item)
